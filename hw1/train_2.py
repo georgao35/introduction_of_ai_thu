@@ -3,12 +3,7 @@ import json
 import re
 import numpy as np
 
-pc_table = dict()
-cp_table = dict()
-pi_table = dict()
-ci_table = dict()
-all_c_table = dict()
-all_cc_table = dict()
+
 path_map = 'train/map.txt'
 path_stats = 'train/stats.txt'
 
@@ -18,6 +13,12 @@ def load_characters():
     加载汉字、拼音，并建立汉字、拼音、序号的互相关联
     :return:
     """
+    pc_table = dict()
+    cp_table = dict()
+    pi_table = dict()
+    ci_table = dict()
+    all_c_table = dict()
+    all_cc_table = dict()
     with open('拼音汉字表_12710172/拼音汉字表.txt', 'r', encoding='gbk') as f:
         lines = f.readlines()
         pinyin_num = lines.__len__() + 1
@@ -37,7 +38,7 @@ def load_characters():
                 cp_table.setdefault(c, []).append(pi_table[pinyin])
                 if not ci_table.__contains__(c):
                     ci_table[c] = character_num
-    return pinyin_num, character_num  # 计算上开始符号$
+    return pc_table, cp_table, pi_table, ci_table, all_c_table, all_cc_table
 
 
 def load_news(index):
@@ -48,27 +49,47 @@ def load_news(index):
     """
     re_exp = '[^\u4e00-\u9fff]+'
     contents = []
-    with open('sina_news_gbk/2016-%d.txt' % index, 'r', encoding='gbk') as f:
-        lines = f.readlines()
-        for line in lines:
-            contents.append(re.sub(re_exp, '$', json.loads(line)['html']))
+    try:
+        with open('sina_news_gbk/2016-%d.txt' % index, 'r', encoding='gbk') as f:
+            lines = f.readlines()
+            for line in lines:
+                contents.append(re.sub(re_exp, '$', json.loads(line)['html']))
+    except SystemError as e:
+        pass
     return contents
 
 
 def load_results():
-    with open(path_map, 'r', encoding='utf-8') as f:
-        pc_table = json.loads(f.readline())
-        cp_table = json.loads(f.readline())
-        pi_table = json.loads(f.readline())
-        ci_table = json.loads(f.readline())
-    with open(path_stats, 'r', encoding='utf-8') as f:
-        all_c_table = json.loads(f.readline())
-        all_cc_table = json.loads(f.readline())
+    """
+    加载已训练的结果；如果没有结果（with open失败），则调用load_characters()来加载拼音、汉字
+    :return:
+    """
+    try:
+        with open(path_map, 'r', encoding='utf-8') as f:
+            pc_table = json.loads(f.readline())
+            cp_table = json.loads(f.readline())
+            pi_table = json.loads(f.readline())
+            ci_table = json.loads(f.readline())
+        with open(path_stats, 'r', encoding='utf-8') as f:
+            all_c_table = json.loads(f.readline())
+            all_cc_table = json.loads(f.readline())
+        return pc_table, cp_table, pi_table, ci_table, all_c_table, all_cc_table
+    except SystemError as e:
+        return load_characters()
 
-    return pc_table, cp_table, pi_table, ci_table, all_c_table, all_cc_table
 
-
-def collect(p_freq=None, pp_freq=None, c_freq=None, cc_freq=None):
+def collect(pc_table, cp_table, pi_table, ci_table, all_c_table, all_cc_table,
+            p_freq=None, pp_freq=None, c_freq=None, cc_freq=None):
+    """
+    在已有的结果上继续收集数据进行训练
+    :param all_c_table: 每个汉字出现的次数
+    :param all_cc_table: 每两个汉字组合出现的次数（如果未出现则不出现）
+    :param p_freq:
+    :param pp_freq:
+    :param c_freq:
+    :param cc_freq:
+    :return: nothing
+    """
     strings = []
     news_ids = [2, 4, 5, 6, 7, 8, 9, 10, 11]
     for i in news_ids:
@@ -85,10 +106,12 @@ def collect(p_freq=None, pp_freq=None, c_freq=None, cc_freq=None):
                     all_cc_table[chars] = 1
             except KeyError as e:
                 pass
-    save()
+    save(pc_table, cp_table, pi_table, ci_table, all_c_table, all_cc_table,
+         p_freq, pp_freq, c_freq, cc_freq)
 
 
-def save(p_freq=None, c_freq=None, pp_freq=None, cc_freq=None):
+def save(pc_table, cp_table, pi_table, ci_table, all_c_table, all_cc_table,
+         p_freq=None, c_freq=None, pp_freq=None, cc_freq=None):
     with open(path_map, 'w', encoding='utf-8') as f:
         f.write(json.dumps(pc_table, ensure_ascii=False) + '\n')
         f.write(json.dumps(cp_table, ensure_ascii=False) + '\n')
@@ -105,12 +128,12 @@ def save(p_freq=None, c_freq=None, pp_freq=None, cc_freq=None):
 
 
 def train():
-    load_characters()
+    pc_table, cp_table, pi_table, ci_table, all_c_table, all_cc_table = load_results()
     # p_freq = np.zeros(pinyin_num, dtype=np.int)
     # pp_freq = np.zeros((pinyin_num, pinyin_num), dtype=np.int)
     # c_freq = np.zeros(character_num, dtype=np.int)
     # cc_freq = np.zeros((character_num, character_num), dtype=np.int)
-    collect()
+    collect(pc_table, cp_table, pi_table, ci_table, all_c_table, all_cc_table)
 
 
 if __name__ == '__main__':

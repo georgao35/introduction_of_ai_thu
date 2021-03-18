@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
-    <file url="file://$PROJECT_DIR$/sina_news_gbk/README.txt" charset="GBK" />
-    <file url="file://$PROJECT_DIR$/train/pinyin_table.txt" charset="GBK" />
     <file url="file://$PROJECT_DIR$/拼音汉字表_12710172/output.txt" charset="GBK" />
     <file url="file://$PROJECT_DIR$/拼音汉字表_12710172/一二级汉字表.txt" charset="GBK" />
     <file url="file://$PROJECT_DIR$/拼音汉字表_12710172/拼音汉字表.txt" charset="GBK" />
