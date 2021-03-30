@@ -24,6 +24,7 @@ def main():
 def test():
     total = 0
     total_correct = 0
+    total_sen = 0
     total_correct_sen = 0
     with open('输入法测试集.txt', 'r', encoding='utf-8') as f:
         while True:
@@ -36,16 +37,24 @@ def test():
                 length = input_line.split(' ').__len__()
                 result = f.readline()
                 guess = predictor.predict(input_line)
+                correct = True
                 for i in range(length):
                     total += 1
                     if guess[i] == result[i]:
                         total_correct += 1
+                    else:
+                        correct = False
+                if correct:
+                    total_correct_sen += 1
+                total_sen += 1
             except Exception as e:
                 pass
     print(total, total_correct, total_correct/total)
+    print(total_sen, total_correct_sen, total_correct_sen/total_sen)
 
 
 if __name__ == '__main__':
     # main()
     predictor = Predictor()
-    test()
+    print(predictor.predict('ji qi xue xi ji qi ying yong'))
+    # test()

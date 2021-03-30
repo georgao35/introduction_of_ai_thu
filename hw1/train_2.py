@@ -139,13 +139,13 @@ class Predictor:
         self.params['all_c'] = all_c_table
         self.params['pc'] = pc_table
         self.params['pc']['$'] = '$'
-        self.lam = 0.9
+        self.reg = 0.9
         self.all_c_num = sum(self.params['all_c'].values())
         print(self.all_c_num)
         pass
 
     def predict(self, line):
-        line = f'$ {line}'
+        line = f'$ {line} $'
         pinyins = line.split(' ')
         result = ''
         all_cc = self.params['all_cc']
@@ -171,16 +171,18 @@ class Predictor:
                             self.record[i][nxt_char]['prev'] = now_char
             else:
                 for character in self.params['pc'][next_py]:
-                    log_prob = -math.log((all_c[character] + 1) / self.all_c_num)
+                    prob = (all_c[character] + 1) / self.all_c_num
+                    if '$' + character in all_cc:
+                        prob = (prob + all_cc['$'+character] / all_c['$']) / 2
+                    log_prob = - math.log(prob)
                     self.record[i][character] = {'prev': '$', 'p': log_prob}
-        char = sorted(self.record[-1].items(), key=lambda item: item[1]['p'])
-        char = char[0][0]
         i = self.record.__len__() - 1
+        char = self.record[i]['$']['prev']
         while char != '$':
             print(sorted(self.record[i].items(), key=lambda item: item[1]['p']))
             result = char + result
-            char = self.record[i][char]['prev']
             i -= 1
+            char = self.record[i][char]['prev']
         print(result)
         return result
 
