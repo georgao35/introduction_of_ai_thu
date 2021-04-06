@@ -56,5 +56,5 @@ def test():
 if __name__ == '__main__':
     # main()
     predictor = Predictor()
-    print(predictor.predict('ji qi xue xi ji qi ying yong'))
-    # test()
+    # print(predictor.predict('ji qi xue xi ji qi ying yong'))
+    test()

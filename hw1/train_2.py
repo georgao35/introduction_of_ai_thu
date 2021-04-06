@@ -139,10 +139,10 @@ class Predictor:
         self.params['all_c'] = all_c_table
         self.params['pc'] = pc_table
         self.params['pc']['$'] = '$'
-        self.reg = 0.9
+        self.reg = 0.9999
+        self.init_reg = 0.25
         self.all_c_num = sum(self.params['all_c'].values())
-        print(self.all_c_num)
-        pass
+        # print(self.all_c_num)
 
     def predict(self, line):
         line = f'$ {line} $'
@@ -151,7 +151,7 @@ class Predictor:
         all_cc = self.params['all_cc']
         all_c = self.params['all_c']
         self.record = []
-        print(pinyins)
+        # print(pinyins)
         for i in range(len(pinyins[:-1])):
             pinyin = pinyins[i]
             pinyin = pinyin.lower()
@@ -165,7 +165,8 @@ class Predictor:
                         if word not in all_cc or now_char not in all_c:
                             continue
                         log_prob = \
-                            -math.log(all_cc[word] / all_c[now_char]) + self.record[i - 1][now_char]['p']
+                            -math.log(all_cc[word] / all_c[now_char] * self.reg + (1-self.reg) * all_c[now_char] / self.all_c_num)\
+                            + self.record[i - 1][now_char]['p']
                         if log_prob < self.record[i][nxt_char]['p']:
                             self.record[i][nxt_char]['p'] = log_prob
                             self.record[i][nxt_char]['prev'] = now_char
@@ -173,17 +174,17 @@ class Predictor:
                 for character in self.params['pc'][next_py]:
                     prob = (all_c[character] + 1) / self.all_c_num
                     if '$' + character in all_cc:
-                        prob = (prob + all_cc['$'+character] / all_c['$']) / 2
+                        prob = prob * self.init_reg + (1-self.init_reg) * all_cc['$'+character] / all_c['$']
                     log_prob = - math.log(prob)
                     self.record[i][character] = {'prev': '$', 'p': log_prob}
         i = self.record.__len__() - 1
         char = self.record[i]['$']['prev']
         while char != '$':
-            print(sorted(self.record[i].items(), key=lambda item: item[1]['p']))
+            # print(sorted(self.record[i].items(), key=lambda item: item[1]['p']))
             result = char + result
             i -= 1
             char = self.record[i][char]['prev']
-        print(result)
+        # print(result)
         return result
 
 
