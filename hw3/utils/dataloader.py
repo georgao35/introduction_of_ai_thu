@@ -9,6 +9,7 @@ class DataLoader:
         self.stop_words = []
         self.sentences = []
         self.label = []
+        self.segment_labels = []
         self.load_stop_words()
 
     def load_stop_words(self, filename='data/stopwords.txt'):
@@ -50,4 +51,5 @@ class DataLoader:
                     segment_tmp.append(word.lower())
             segments.append(segment_tmp)
             segment_label.append((segment_tmp, label))
+        self.segment_labels = segment_label
         return segments, segment_label

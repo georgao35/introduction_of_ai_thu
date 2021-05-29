@@ -15,8 +15,9 @@ class CNN(nn.Module):
                  kernel_sizes=None,
                  out_size: int = 7,
                  max_len: int = 89,
-                 hidden_size: int = 32,
-                 dropout: float = 0.9):
+                 hidden_channel: int = 32,
+                 hidden_dim: int = 32,
+                 dropout: float = 0.5):
         super(CNN, self).__init__()
         if kernel_sizes is None:
             kernel_sizes = [3]
@@ -24,26 +25,27 @@ class CNN(nn.Module):
         self.vocab = vocab
         self.embed_dim = embed_size
         self.dropout_rate = dropout
-        self.hidden_dim = hidden_size
+        self.hidden_channel = hidden_channel
+        self.hidden_dim = hidden_dim
         self.feature_dim = out_size
         self.max_len = max_len
-        self.loss_function = nn.CrossEntropyLoss()
+        self.loss_function = nn.CrossEntropyLoss(reduction='sum')
 
         self.embedding = nn.Embedding.from_pretrained(weight)
-        self.embedding.requires_grad_(False)
+        # self.embedding.requires_grad_(False)
         self.conv = nn.ModuleList()
         self.conv_num = len(kernel_sizes)
         for kernel_size in kernel_sizes:
             self.conv.append(nn.Sequential(
-                nn.Conv1d(embed_size, 64, kernel_size, padding=kernel_size // 2),
+                nn.Conv1d(embed_size, self.hidden_channel, kernel_size, padding=kernel_size // 2),
                 nn.ReLU()
             ))
         self.mlp_network = nn.Sequential(
-            nn.Linear(self.conv_num * 64, self.hidden_dim),
+            nn.Linear(self.conv_num * self.hidden_channel, self.hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(self.hidden_dim, out_size),
-            # nn.Softmax(dim=1),
+            # nn.Softmax(dim=1)
         )
 
     def forward(self, x_in) -> torch.Tensor:

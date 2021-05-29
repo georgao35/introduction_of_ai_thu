@@ -7,13 +7,15 @@ import torch.nn.functional as F
 from torch.optim import optimizer
 from torch.utils.tensorboard import SummaryWriter
 from utils.dataloader import DataLoader
+from utils.batch import Batch
 from gensim.models import Word2Vec
 from multiprocessing import cpu_count
 from models.baseline import MLP
 from models.cnn import CNN
+from models.rnn import RNN
 from sklearn.metrics import f1_score
 
-vector_size = 20
+vector_size = 100
 
 
 def parse_args():
@@ -65,9 +67,11 @@ def init_network(model_type: str, gensim_model: Word2Vec, cnn_conv=None):
     weight = torch.FloatTensor(gensim_model.wv.vectors)
     vocab = gensim_model.wv.vocab
     if model_type == 'MLP':
-        network = MLP(weight, vocab, vector_size)
+        network = MLP(weight, vocab, vector_size, hidden_dim=64)
     elif model_type == 'CNN':
-        network = CNN(weight, vocab, vector_size, kernel_sizes=cnn_conv, hidden_size=256)
+        network = CNN(weight, vocab, vector_size, kernel_sizes=cnn_conv, hidden_channel=128, hidden_dim=40)
+    elif model_type == 'RNN':
+        network = RNN(weight, vocab, vector_size, rnn_hidden_dim=128, mlp_hidden_dim=128, num_layer=1)
     else:
         network = nn.Module()
     return network
@@ -94,33 +98,34 @@ def get_label_tensor(label: str) -> torch.Tensor:
     return result
 
 
-def train(network: nn.Module, batch_size: int, step: int, seg_labels: list):
+def train(network: nn.Module, batch_size: int, epochs: int, seg_labels: list):
     if torch.cuda.is_available():
         network = network.cuda()
         network.device = 'cuda'
-    optim = torch.optim.Adam(network.parameters(), lr=2e-3)
-    for i in range(step):
-        batch = random.choices(seg_labels, k=batch_size)
-        sentences = []
-        answers_list = []
-        for (sample, label) in batch:
-            sentences.append(sample)
-            answers_list.append(get_label_tensor(label))
-        answer = torch.stack(answers_list, dim=0).to(network.device)
-        output = network.forward(sentences)
-        # print(output)
-        loss = network.loss(output, answer)
-        optim.zero_grad()
-        loss.backward()
-        optim.step()
-        writer.add_scalar('train/loss', loss, i)
-        accuracy, macro, micro = get_metric(torch.argmax(output, dim=1), torch.argmax(answer, dim=1))
-        writer.add_scalar('train/accuracy', accuracy, i)
-        writer.add_scalar('train/macro', macro, i)
-        writer.add_scalar('train/micro', micro, i)
-        if i % 500 == 0:
-            print("epoch%d" % (i / 500))
-            evaluate(network)
+    optim = torch.optim.Adam(network.parameters(), lr=1e-4)
+    for i in range(epochs):
+        network.train()
+        batches = Batch(seg_labels, batch_size)
+        for j, batch in enumerate(batches):
+            sentences = []
+            answers_list = []
+            for (sample, label) in batch:
+                sentences.append(sample)
+                answers_list.append(get_label_tensor(label))
+            answer = torch.stack(answers_list, dim=0).to(network.device)
+            output = network.forward(sentences)
+            # print(output)
+            loss = network.loss(output, answer)
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
+            accuracy, macro, micro = get_metric(torch.argmax(output, dim=1), torch.argmax(answer, dim=1))
+            writer.add_scalar('train/loss', loss, i*batches.len + j)
+            writer.add_scalar('train/accuracy', accuracy, i*batches.len + j)
+            writer.add_scalar('train/macro', macro, i*batches.len + j)
+            writer.add_scalar('train/micro', micro, i*batches.len + j)
+        print("epoch%d" % i)
+        evaluate(network)
 
 
 def get_max_len(segments):
@@ -136,7 +141,7 @@ def evaluate(network: nn.Module):
     eval_loader.load_stop_words()
     eval_loader.load_sentences(filename='data/isear_valid.csv')
     segments, segments_with_labels = eval_loader.load_words()
-    batch = random.choices(segments_with_labels, k=300)
+    batch = segments_with_labels
     sentences = []
     answers_list = []
     for (sample, label) in batch:
@@ -165,15 +170,16 @@ if __name__ == '__main__':
     sentences_, segments_, segment_labels = load_corpus()
     # model = train_w2vec(segments_)
     model = load_w2vec()
+    vector_size = model.wv.vector_size
 
     network_type = 'MLP'
-    network = init_network(network_type, model, [3, 4, 5, 6])
+    network = init_network(network_type, model, [3, 4, 5])
 
     log_dir_path = 'logs/%d%s' % (time.time(), network_type)
     if not os.path.exists(log_dir_path):
         os.mkdir(log_dir_path)
     writer = SummaryWriter(log_dir_path)
 
-    train(network, 100, 10000, segment_labels)
+    train(network, 64, 200, segment_labels)
     torch.save(network.state_dict(), 'models/saved_' + network_type + '2')
     evaluate(network)
