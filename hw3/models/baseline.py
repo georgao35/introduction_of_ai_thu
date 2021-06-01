@@ -32,7 +32,7 @@ class MLP(nn.Module):
             # nn.Softmax(dim=1)
         )
 
-        self.loss_function = nn.CrossEntropyLoss(reduction='sum')
+        self.loss_function = nn.CrossEntropyLoss()
 
     def forward(self, x_in) -> torch.Tensor:
         """

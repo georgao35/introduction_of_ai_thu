@@ -14,10 +14,10 @@ class CNN(nn.Module):
                  embed_size: int,
                  kernel_sizes=None,
                  out_size: int = 7,
-                 max_len: int = 89,
+                 max_len: int = 128,
                  hidden_channel: int = 32,
                  hidden_dim: int = 32,
-                 dropout: float = 0.5):
+                 dropout: float = 0.4):
         super(CNN, self).__init__()
         if kernel_sizes is None:
             kernel_sizes = [3]
@@ -29,23 +29,24 @@ class CNN(nn.Module):
         self.hidden_dim = hidden_dim
         self.feature_dim = out_size
         self.max_len = max_len
-        self.loss_function = nn.CrossEntropyLoss(reduction='sum')
+        self.loss_function = nn.CrossEntropyLoss()
 
-        self.embedding = nn.Embedding.from_pretrained(weight)
+        self.embedding = nn.Embedding(weight.shape[0], embed_size)
         # self.embedding.requires_grad_(False)
         self.conv = nn.ModuleList()
         self.conv_num = len(kernel_sizes)
         for kernel_size in kernel_sizes:
             self.conv.append(nn.Sequential(
                 nn.Conv1d(embed_size, self.hidden_channel, kernel_size, padding=kernel_size // 2),
-                nn.ReLU()
+                nn.ReLU(),
+                nn.Dropout(dropout),
             ))
         self.mlp_network = nn.Sequential(
             nn.Linear(self.conv_num * self.hidden_channel, self.hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(self.hidden_dim, out_size),
-            # nn.Softmax(dim=1)
+            nn.Softmax(dim=1)
         )
 
     def forward(self, x_in) -> torch.Tensor:
@@ -56,8 +57,8 @@ class CNN(nn.Module):
         """
         x_vec = self.embed(x_in)
         batch_num = x_vec.shape[0]
-        x_vec = x_vec.view(batch_num, self.embed_dim, -1)
-        cnn_output = torch.cat([MaxPoolOvertime(cnn(x_vec)) for cnn in self.conv], dim=1).to(self.device)
+        x_vec = x_vec.permute(0, 2, 1)
+        cnn_output = torch.cat([MaxPoolOvertime(cnn(x_vec)).squeeze(2) for cnn in self.conv], dim=1).to(self.device)
         cnn_output = cnn_output.view(batch_num, -1)
         return self.mlp_network(cnn_output)
 

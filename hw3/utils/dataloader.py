@@ -28,6 +28,9 @@ class DataLoader:
 
     def load_sentences(self, filename='data/isear_train.csv'):
         lines = csv.reader(open(filename, 'r'))
+        # valid = list(csv.reader(open('data/isear_valid.csv', 'r')))
+        # test = list(csv.reader(open('data/isear_test.csv', 'r')))
+        # lines = list(lines) + valid + test
         raws = [(line[2], line[1]) for line in lines]
         sentences = [raw[0] for raw in raws]
         labels = [raw[1] for raw in raws]

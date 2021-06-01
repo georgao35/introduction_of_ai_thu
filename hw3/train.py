@@ -1,10 +1,12 @@
-import random
 import os
 import time
+import random
+import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import optimizer
+from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.dataloader import DataLoader
 from utils.batch import Batch
@@ -15,7 +17,7 @@ from models.cnn import CNN
 from models.rnn import RNN
 from sklearn.metrics import f1_score
 
-vector_size = 100
+vector_size = 40
 
 
 def parse_args():
@@ -69,7 +71,7 @@ def init_network(model_type: str, gensim_model: Word2Vec, cnn_conv=None):
     if model_type == 'MLP':
         network = MLP(weight, vocab, vector_size, hidden_dim=64)
     elif model_type == 'CNN':
-        network = CNN(weight, vocab, vector_size, kernel_sizes=cnn_conv, hidden_channel=128, hidden_dim=40)
+        network = CNN(weight, vocab, vector_size, kernel_sizes=cnn_conv, hidden_channel=128, hidden_dim=128)
     elif model_type == 'RNN':
         network = RNN(weight, vocab, vector_size, rnn_hidden_dim=128, mlp_hidden_dim=128, num_layer=1)
     else:
@@ -102,8 +104,10 @@ def train(network: nn.Module, batch_size: int, epochs: int, seg_labels: list):
     if torch.cuda.is_available():
         network = network.cuda()
         network.device = 'cuda'
-    optim = torch.optim.Adam(network.parameters(), lr=1e-4)
+    optim = torch.optim.Adam(network.parameters(), lr=1e-3, weight_decay=1e-3)
+
     for i in range(epochs):
+        model.train()
         network.train()
         batches = Batch(seg_labels, batch_size)
         for j, batch in enumerate(batches):
@@ -126,6 +130,7 @@ def train(network: nn.Module, batch_size: int, epochs: int, seg_labels: list):
             writer.add_scalar('train/micro', micro, i*batches.len + j)
         print("epoch%d" % i)
         evaluate(network)
+        evaluate(network, 'data/isear_test.csv')
 
 
 def get_max_len(segments):
@@ -136,7 +141,7 @@ def get_max_len(segments):
     return max_len
 
 
-def evaluate(network: nn.Module):
+def evaluate(network: nn.Module, filename='data/isear_valid.csv'):
     eval_loader = DataLoader()
     eval_loader.load_stop_words()
     eval_loader.load_sentences(filename='data/isear_valid.csv')
@@ -144,6 +149,7 @@ def evaluate(network: nn.Module):
     batch = segments_with_labels
     sentences = []
     answers_list = []
+    network.eval()
     for (sample, label) in batch:
         sentences.append(sample)
         answers_list.append(get_label_tensor(label))
@@ -172,8 +178,8 @@ if __name__ == '__main__':
     model = load_w2vec()
     vector_size = model.wv.vector_size
 
-    network_type = 'MLP'
-    network = init_network(network_type, model, [3, 4, 5])
+    network_type = 'RNN'
+    network = init_network(network_type, model, [3, 4])
 
     log_dir_path = 'logs/%d%s' % (time.time(), network_type)
     if not os.path.exists(log_dir_path):
