@@ -13,7 +13,7 @@ class MLP(nn.Module):
                  dropout=0.75,
                  out_channel: int = 7,
                  hidden_dim: int = 32,
-                 max_len: int = 89):
+                 max_len: int = 100):
         super(MLP, self).__init__()
         self.embed_dim = embed_size
         self.hidden_dim = hidden_dim
@@ -22,12 +22,13 @@ class MLP(nn.Module):
         self.max_len = max_len
         self.device = 'cpu'
 
-        self.embedding = nn.Embedding.from_pretrained(weight)
-        self.embedding.requires_grad = False
+        # self.embedding = nn.Embedding.from_pretrained(weight)
+        self.embedding = nn.Embedding(weight.shape[0], embed_size)
+        # self.embedding.requires_grad = False
         self.mlp = nn.Sequential(
             nn.Linear(embed_size * max_len, self.hidden_dim),
             nn.Softplus(),
-            nn.Dropout(),
+            nn.Dropout(0.5),
             nn.Linear(self.hidden_dim, out_channel),
             # nn.Softmax(dim=1)
         )

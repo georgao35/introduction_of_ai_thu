@@ -15,6 +15,7 @@ class RNN(nn.Module):
                  dropout=0.5,
                  max_len=128,
                  rtype: str = 'LSTM',
+                 da_hidden_dim: int = 128,
                  self_attention: bool = False):
         super(RNN, self).__init__()
 
@@ -26,6 +27,7 @@ class RNN(nn.Module):
         self.loss_function = nn.CrossEntropyLoss()
         self.rnn_hidden_dim = rnn_hidden_dim
         self.mlp_hidden_dim = mlp_hidden_dim
+        self.da_hidden_dim = da_hidden_dim
         if rtype == 'LSTM':
             self.rnn = nn.LSTM(input_size=embed_dim, hidden_size=rnn_hidden_dim,
                                num_layers=num_layer, batch_first=True, bidirectional=True)
@@ -37,13 +39,25 @@ class RNN(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(mlp_hidden_dim, out_size)
         )
+        self.attention = self_attention
+        if self_attention:
+            self.W1 = nn.Parameter(torch.randn(da_hidden_dim, rnn_hidden_dim * 2))
+            self.W2 = nn.Parameter(torch.randn(1, da_hidden_dim))
 
     def forward(self, x_in):
         x_embed, length = self.embed(x_in)
         x = torch.nn.utils.rnn.pack_padded_sequence(x_embed, length, batch_first=True, enforce_sorted=False)
         rnn_out, _ = self.rnn(x)
         output, _ = torch.nn.utils.rnn.pad_packed_sequence(rnn_out)
-        outputs = self.mlp(output[0])
+        if self.attention:
+            output = output.permute(1, 0, 2)
+            attention = F.softmax(
+                torch.matmul(self.W2, torch.tanh(torch.matmul(self.W1, output.transpose(1, 2)))),
+                dim=2)
+            output = torch.matmul(attention, output)
+            # print(output.shape)
+            output = output.view(output.shape[0], -1)
+        outputs = self.mlp(output[0]) if not self.attention else self.mlp(output)
         labels = F.softmax(outputs, dim=1)
         return labels
 
