@@ -17,7 +17,19 @@ class CNN(nn.Module):
                  max_len: int = 128,
                  hidden_channel: int = 32,
                  hidden_dim: int = 32,
-                 dropout: float = 0.4):
+                 dropout: float = 0.1):
+        """
+        CNN网络
+        :param weight: 预训练词向量，可以选择为0
+        :param vocab: 词汇的词典
+        :param embed_size: 词向量维度
+        :param kernel_sizes: 卷积核大小，多个卷积核组成列表
+        :param out_size: 输出标签个数，为7
+        :param max_len: 句子最大长度
+        :param hidden_channel: cnn卷积核输出channel个数
+        :param hidden_dim: 全连接网络隐含层维度
+        :param dropout: dropout概率
+        """
         super(CNN, self).__init__()
         if kernel_sizes is None:
             kernel_sizes = [3]

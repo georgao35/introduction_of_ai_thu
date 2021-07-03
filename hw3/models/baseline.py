@@ -10,10 +10,20 @@ class MLP(nn.Module):
                  weight: torch.Tensor,
                  vocab: dict,
                  embed_size: int,
-                 dropout=0.75,
+                 dropout=0.5,
                  out_channel: int = 7,
                  hidden_dim: int = 32,
                  max_len: int = 100):
+        """
+        MLP网络
+        :param weight: 预训练词向量，可以选择为0
+        :param vocab: 词汇的词典
+        :param embed_size: 词向量维数
+        :param dropout: dropout层概率
+        :param out_channel: 输出的标签数，为7
+        :param hidden_dim: 隐藏层维度，默认128
+        :param max_len: 词语最大长度，默认100
+        """
         super(MLP, self).__init__()
         self.embed_dim = embed_size
         self.hidden_dim = hidden_dim
@@ -28,7 +38,7 @@ class MLP(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(embed_size * max_len, self.hidden_dim),
             nn.Softplus(),
-            nn.Dropout(0.5),
+            nn.Dropout(dropout),
             nn.Linear(self.hidden_dim, out_channel),
             # nn.Softmax(dim=1)
         )

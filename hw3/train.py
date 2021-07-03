@@ -63,7 +63,7 @@ def load_w2vec(path: str = 'data/train.model'):
 
 def init_network(model_type: str, gensim_model: Word2Vec, cnn_conv=None):
     """
-
+    init neural network
     :param cnn_conv: kernel sizes for conv layer in conv
     :param model_type: type of chosen neural network
     :type gensim_model: Word2Vec
@@ -107,7 +107,7 @@ def train(network: nn.Module, batch_size: int, epochs: int, seg_labels: list):
     if torch.cuda.is_available():
         network = network.cuda()
         network.device = 'cuda'
-    optim = torch.optim.Adam(network.parameters(), lr=1e-3, weight_decay=1e-3)
+    optim = torch.optim.Adam(network.parameters(), lr=1e-4, weight_decay=1e-3)
     lrs = lr_scheduler.ReduceLROnPlateau(optim)
     best_net = network.state_dict()
     best_accur = 0.0
@@ -138,10 +138,12 @@ def train(network: nn.Module, batch_size: int, epochs: int, seg_labels: list):
         # evaluate(network)
         # evaluate(network, 'data/isear_test.csv')
         accuracy, macro, micro = test(network, 'eval')
-        test(network, 'test')
+        writer.add_scalar('eval/accuracy', accuracy, i)
+        # test(network, 'test')
         if accuracy > best_accur:
             best_accur = accuracy
             best_net = deepcopy(network.state_dict())
+    print('best evaluation accuracy:'+str(best_accur))
     return best_net
 
 
@@ -222,7 +224,7 @@ if __name__ == '__main__':
     test_loader.load_sentences(filename='data/isear_test.csv')
     segments, segment_labels_test = test_loader.load_words()
 
-    network_type = 'MLP'
+    network_type = 'CNN'
     network = init_network(network_type, model, [3, 4])
     mlp_args = {
         "lr": 1e-3,
@@ -245,7 +247,7 @@ if __name__ == '__main__':
     # writer.add_graph(network)
     # writer.close()
 
-    best_network_dict = train(network, 64, 175, segment_labels)
+    best_network_dict = train(network, 64, 200, segment_labels)
     network.state_dict()
     torch.save(best_network_dict, 'models/' + network_type + '1')
     network.load_state_dict(best_network_dict)

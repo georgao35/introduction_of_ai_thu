@@ -16,7 +16,22 @@ class RNN(nn.Module):
                  max_len=128,
                  rtype: str = 'LSTM',
                  da_hidden_dim: int = 128,
-                 self_attention: bool = False):
+                 self_attention: bool = True):
+        """
+        RNN网络
+        :param weight: 预训练词向量，可以选择为0
+        :param vocab: 词汇的词典
+        :param embed_dim: 词向量维度
+        :param rnn_hidden_dim: rnn隐层维度
+        :param mlp_hidden_dim: 全连接隐藏层
+        :param num_layer: rnn层数
+        :param out_size: 输出标签个数
+        :param dropout: dropout概率
+        :param max_len: 句子最长长度
+        :param rtype: rnn网络种类，目前支持lstm
+        :param da_hidden_dim: attention网络隐层维度
+        :param self_attention: 是否加上self attention
+        """
         super(RNN, self).__init__()
 
         self.device = 'cpu'
