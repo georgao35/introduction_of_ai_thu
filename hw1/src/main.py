@@ -1,6 +1,8 @@
 import argparse
 import os
 from train_2 import train, Predictor
+import time
+from train_3 import Pinyin
 
 
 def main():
@@ -8,14 +10,18 @@ def main():
     parser.add_argument("input_file")
     parser.add_argument("output_file")
     parser.add_argument("--train")
+    parser.add_argument("--test")
+    parser.add_argument("--newstest")
     input_path = parser.parse_args().input_file
     output_path = parser.parse_args().output_file
+    print(parser.parse_args(), input_path, output_path)
+    predictor = Pinyin()
     try:
         with open(input_path, 'r', encoding='gbk') as f:
             lines = f.readlines()
-            predictor = Predictor()
             with open(output_path, 'w', encoding='gbk') as out:
                 for line in lines:
+                    line = line.strip('\n')
                     out.write(predictor.predict(line) + '\n')
     except SystemError as e:
         pass
@@ -26,6 +32,8 @@ def test():
     total_correct = 0
     total_sen = 0
     total_correct_sen = 0
+    begin = time.time()
+    predictor = Pinyin()
     with open('输入法测试集.txt', 'r', encoding='utf-8') as f:
         while True:
             try:
@@ -47,14 +55,31 @@ def test():
                 if correct:
                     total_correct_sen += 1
                 total_sen += 1
-            except Exception as e:
+            except Exception:
                 pass
     print(total, total_correct, total_correct/total)
     print(total_sen, total_correct_sen, total_correct_sen/total_sen)
+    end = time.time()
+    print('total time'+str(end-begin))
+
+
+def accuracy():
+    path_result = 'test/output999.txt'
+    path_answer = 'test/answer.txt'
+    result = open(path_result, 'r', encoding='gbk')
+    answer = open(path_answer, 'r', encoding='utf-8')
+    lines = answer.readlines()
+    total, correct = 0, 0
+    for line in lines:
+        line = line.strip('\n')
+        output = result.readline()
+        total += len(line)
+        for i in range(len(line)):
+            correct += line[i] == output[i]
+    answer.close()
+    result.close()
+    print(total, correct, correct/total)
 
 
 if __name__ == '__main__':
-    # main()
-    predictor = Predictor()
-    # print(predictor.predict('ji qi xue xi ji qi ying yong'))
-    test()
+    main()

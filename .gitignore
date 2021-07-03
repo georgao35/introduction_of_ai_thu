@@ -1,3 +1,5 @@
 .DS_Store
 sina_news_gbk/
 拼音汉字表_12710172
+.idea/
+__pycache__/
